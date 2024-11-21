@@ -18,14 +18,15 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   connection.on("receive", (id, value) => {
-    console.log(`received value: ${value} for ID: ${id}`);
-    const element = document.getElementById(id);
-    if (element) {
-      element.textContent = value;
+    console.log(`Received value: ${value} for ID: ${id}`);
+
+    axios.get(`https://localhost:7045/api/Sensor/${id}`).then((response) => {
+      const { x, y } = response.data;
+
+      displaySensorValue(id, value, x, y);
+
       updateUnifiedChart(id, parseFloat(value));
-    } else {
-      console.warn(`Element with ID: ${id} not found.`);
-    }
+    });
   });
 
   connection.on("receiveTime", (time) => {
@@ -65,6 +66,10 @@ document.addEventListener("DOMContentLoaded", function () {
   function getSensors() {
     axios.get("https://localhost:7045/api/Sensor").then((result) => {
       result.data.forEach((sensor) => {
+        const { id, value, x, y } = sensor;
+
+        displaySensorValue(id, value, x, y);
+
         if (!unifiedChartData[sensor.id]) {
           createUnifiedChartDataset(sensor.id, sensor.name);
         }
@@ -97,9 +102,13 @@ document.addEventListener("DOMContentLoaded", function () {
         unit,
       })
       .then((result) => {
-        if (!unifiedChartData[result.data]) {
-          createUnifiedChartDataset(result.data, name);
+        const sensor = result.data;
+
+        if (!unifiedChartData[sensor.id]) {
+          createUnifiedChartDataset(sensor.id, name);
         }
+
+        displaySensorValue(sensor.id, value, x, y);
       });
   }
 
@@ -227,5 +236,26 @@ document.addEventListener("DOMContentLoaded", function () {
     return `rgba(${Math.floor(
       Math.random() * 255
     )}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 1)`;
+  }
+
+  function displaySensorValue(id, value, x, y) {
+    let sensorElement = document.getElementById(`sensor-${id}`);
+    if (!sensorElement) {
+      sensorElement = document.createElement("div");
+      sensorElement.id = `sensor-${id}`;
+      sensorElement.className = "sensor-value";
+      sensorElement.style.position = "absolute";
+      sensorElement.style.left = `${x + 140}px`;
+      sensorElement.style.top = `${y - 15}px`;
+      sensorElement.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
+      sensorElement.style.padding = "5px";
+      sensorElement.style.border = "1px solid #ccc";
+      sensorElement.style.borderRadius = "4px";
+      sensorElement.style.fontSize = "14px";
+      sensorElement.style.zIndex = "1000";
+      document.body.appendChild(sensorElement);
+    }
+
+    sensorElement.textContent = `${value}`;
   }
 });
